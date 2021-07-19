@@ -1,5 +1,6 @@
 import React from "react";
-import styled from "styled-components";
+import nookies from "nookies";
+import jwt from "jsonwebtoken";
 import MainGrid from "../src/components/MainGrid";
 import Box from "../src/components/Box";
 import {
@@ -51,9 +52,9 @@ function ProfileRelationsBox(props) {
   );
 }
 
-export default function Home() {
+export default function Home(props) {
   const [community, setCommunity] = React.useState([]);
-  const githubUser = "brendongvieira";
+  const githubUser = props.githubUser;
   const myFriends = [
     "filipedeschamps",
     "peas",
@@ -177,6 +178,21 @@ export default function Home() {
           <ProfileRelationsBox title={"Seguidores"} items={followers} />
 
           <ProfileRelationsBoxWrapper>
+            <h2 className="smallTitle">Seguindo ({myFriends.length})</h2>
+            <ul>
+              {myFriends.map((thisUser) => {
+                return (
+                  <li key={thisUser}>
+                    <a href={"/users/${thisUser}"}>
+                      <img src={`https://github.com/${thisUser}.png`} />
+                      <span>{thisUser}</span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </ProfileRelationsBoxWrapper>
+          <ProfileRelationsBoxWrapper>
             <h2 className="smallTitle">Comunidades ({community.length})</h2>
             <ul>
               {community.map((thisUser) => {
@@ -191,25 +207,40 @@ export default function Home() {
               })}
             </ul>
           </ProfileRelationsBoxWrapper>
-          <ProfileRelationsBoxWrapper>
-            <h2 className="smallTitle">
-              Pessoas da comunidade ({myFriends.length})
-            </h2>
-            <ul>
-              {myFriends.map((thisUser) => {
-                return (
-                  <li key={thisUser}>
-                    <a href={"/users/${thisUser}"}>
-                      <img src={`https://github.com/${thisUser}.png`} />
-                      <span>{thisUser}</span>
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          </ProfileRelationsBoxWrapper>
         </div>
       </MainGrid>
     </>
   );
+}
+
+export async function getServerSideProps(context) {
+  const cookies = nookies.get(context);
+  const token = cookies.USER_TOKEN;
+
+  const { isAuthenticated } = await fetch(
+    "https://alurakut.vercel.app/api/auth",
+    {
+      headers: {
+        Authorization: token,
+      },
+    }
+  ).then((response) => response.json());
+
+  console.log("isAuthenticated", isAuthenticated);
+
+  if (!isAuthenticated) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  const { githubUser } = jwt.decode(token);
+  return {
+    props: {
+      githubUser,
+    }, // will be passed to the page component as props
+  };
 }
